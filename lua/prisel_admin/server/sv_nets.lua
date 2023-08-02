@@ -4,6 +4,7 @@ util.AddNetworkString("PriselV3::PlayerAdmin")
 local playerStaffTimes = {}
 
 net.Receive("PriselV3::PlayerAdmin", function(_, ply)
+
 	local action = net.ReadUInt(2)
 
 	if action == 1 then
@@ -53,9 +54,8 @@ net.Receive("PriselV3::PlayerAdmin", function(_, ply)
 			)
 		end
 	end
-end)
 
--- on disconnect remove player from staff mode and logs
+end)
 
 hook.Add("PlayerDisconnected", "PriselV3::PlayerAdmin", function(ply)
 	if ply:HasAdminMode() then

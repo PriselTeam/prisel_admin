@@ -223,37 +223,79 @@ function Prisel.Admin.OpenPlayerInfo(player)
 end
 
 function Prisel.Admin.AdminMode()
+
   timer.Simple(0.2, function()
+
     if not LocalPlayer():PIsStaff() then return end
+
     if not LocalPlayer():HasAdminMode() then 
       hook.Remove("HUDPaint", "Prisel.AdminMode.PlayerInfos")
     return end
-    local isNoclip = LocalPlayer():GetMoveType() == MOVETYPE_NOCLIP
+
     hook.Add("HUDPaint", "Prisel.AdminMode.PlayerInfos", function()
+
       if not LocalPlayer():PIsStaff() then return end
+
       if not LocalPlayer():HasAdminMode() then 
         hook.Remove("HUDPaint", "Prisel.AdminMode.PlayerInfos")
       return end
-      isNoclip = LocalPlayer():GetMoveType() == MOVETYPE_NOCLIP
+
       draw.SimpleTextOutlined("Mode Administration", DarkRP.Library.Font(12, 0, "Montserrat Bold"), DarkRP.ScrW / 2, DarkRP.ScrH * 0.02, DarkRP.Config.Colors.Red, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER, 1, color_black)
       draw.SimpleTextOutlined("Temps de staff : "..DarkRP.Library.FormatSeconds(CurTime()-timeStaff, true), DarkRP.Library.Font(10, 0, "Montserrat Bold"), DarkRP.ScrW *0.995, DarkRP.ScrH * 0.02, color_white, TEXT_ALIGN_RIGHT, TEXT_ALIGN_CENTER, 1, color_black)
     
-      for k, v in ipairs(player.GetAll()) do
+      for _, v in ipairs(player.GetAll()) do
+
         if v == LocalPlayer() then continue end
         if not v:IsValid() then continue end
 
-        if LocalPlayer():GetPos():Distance(v:GetPos()) > 2500 then continue end
+        local pPos = v:GetShootPos()
+        local iDist = LocalPlayer():GetPos():Distance(pPos)
 
-        local pPos = (v:GetPos() + Vector(0, 0, 80)):ToScreen()
-        pPos.y = pPos.y - 40
+        if iDist > 2000 then continue end
 
-        draw.SimpleTextOutlined(v:Nick(), DarkRP.Library.Font(6, 0, "Montserrat Bold"), pPos.x, pPos.y, DarkRP.Library.ColorNuance(DarkRP.Config.Colors.Blue, 25), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER, 1, color_black)
-        draw.SimpleTextOutlined(v:Health().."%", DarkRP.Library.Font(6, 0, "Montserrat Bold"), pPos.x, pPos.y + 15, DarkRP.Config.Colors.Red, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER, 1, color_black)
-        draw.SimpleTextOutlined(v:Armor().."%", DarkRP.Library.Font(6, 0, "Montserrat Bold"), pPos.x, pPos.y + 30, DarkRP.Config.Colors.Blue, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER, 1, color_black)
-        draw.SimpleTextOutlined(string.upper(v:GetUserGroup()), DarkRP.Library.Font(6, 0, "Montserrat Bold"), pPos.x, pPos.y + 45, DarkRP.Config.Colors.Green, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER, 1, color_black)
+        pPos.z = pPos.z + 20
+        pPos = pPos:ToScreen()
+        if not pPos.visible then continue end
+
+        if iDist < 500 then
+          draw.SimpleTextOutlined(v:Health().."%", DarkRP.Library.Font(6, 0, "Montserrat Bold"), pPos.x, pPos.y - 5, DarkRP.Config.Colors.Red, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER, 1, color_black)
+          draw.SimpleTextOutlined(v:Armor().."%", DarkRP.Library.Font(6, 0, "Montserrat Bold"), pPos.x, pPos.y + 10, DarkRP.Config.Colors.Blue, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER, 1, color_black)
+          draw.SimpleTextOutlined(string.upper(v:GetUserGroup()), DarkRP.Library.Font(6, 0, "Montserrat Bold"), pPos.x, pPos.y + 25, DarkRP.Config.Colors.Green, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER, 1, color_black)
+          draw.SimpleTextOutlined(team.GetName(v:Team()), DarkRP.Library.Font(6, 0, "Montserrat Bold"), pPos.x, pPos.y + 40, team.GetColor(v:Team()), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER, 1, color_black)
+        end
+        if (v:GetUTimeTotalTime() or 0) < 125 then
+          draw.SimpleTextOutlined("Nouveau Joueur" , DarkRP.Library.Font(6, 0, "Montserrat Bold"), pPos.x, pPos.y - 45, color_white, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER, 1, color_black)
+        end
+        draw.SimpleTextOutlined(v:Nick(), DarkRP.Library.Font(6, 0, "Montserrat Bold"), pPos.x, pPos.y-20, color_white, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER, 1, color_black)
+      end
+
+      for _, v in ipairs(ents.FindByClass("prop_vehicle_jeep")) do
+        if not v:IsValid() then continue end
+        if not v:IsVehicle() then continue end
+  
+        local pPos = v:GetPos()
+        local iDist = LocalPlayer():GetPos():Distance(pPos)
+  
+        if iDist > 2000 then continue end
+  
+        pPos.z = pPos.z + 20
+        pPos = pPos:ToScreen()
+        if not pPos.visible then continue end
+  
+        if iDist < 500 then
+          draw.SimpleTextOutlined(v:GetVehicleClass(), DarkRP.Library.Font(6, 0, "Montserrat Bold"), pPos.x, pPos.y - 5, DarkRP.Library.ColorNuance(DarkRP.Config.Colors.Red, -25), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER, 1, color_black)
+          draw.SimpleTextOutlined(("Vitesse : %s km/h"):format(v:SV_GetCachedSpeed()), DarkRP.Library.Font(6, 0, "Montserrat Bold"), pPos.x, pPos.y + 25, DarkRP.Library.ColorNuance(DarkRP.Config.Colors.Blue, -25), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER, 1, color_black)
+        end
+        draw.SimpleTextOutlined("↓ Véhicule ↓", DarkRP.Library.Font(6, 0, "Montserrat Bold"), pPos.x, pPos.y - 25, DarkRP.Library.ColorNuance(DarkRP.Config.Colors.Yellow, -25), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER, 1, color_black)
+        draw.SimpleTextOutlined(("Appartenant à %s"):format(v:CPPIGetOwner():Nick()), DarkRP.Library.Font(6, 0, "Montserrat Bold"), pPos.x, pPos.y + 10, DarkRP.Library.ColorNuance(DarkRP.Config.Colors.Green, -25), TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER, 1, color_black) 
+      
       end
     end)
+
+
+
   end)
+  
 end
 
 function Prisel.Admin.CreatePanelAdmin()
@@ -485,26 +527,28 @@ function Prisel.Admin.ShowMenu()
 
 
     for _, v in ipairs(player.GetAll()) do
-        if v ~= localPlayer and v:IsValid() and v:IsOnScreen() then
-            local pPos = v:GetPos():ToScreen()
-            local distanceBetween = math.sqrt((mousePosX - pPos.x) ^ 2 + (mousePosY - pPos.y) ^ 2)
+      if v ~= localPlayer and v:IsValid() and v:IsOnScreen() then
+        local pPos = v:GetShootPos()
+        if localPlayer:GetPos():Distance(pPos) > 2000 then continue end
+        pPos = pPos:ToScreen()
+        local distanceBetween = math.sqrt((mousePosX - pPos.x) ^ 2 + (mousePosY - pPos.y) ^ 2)
 
-            if distanceBetween <= 100 then
-                draw.SimpleTextOutlined("Clique gauche pour " .. (localPlayer:HasAdminMode() and "ouvrir le panel joueur" or "copier le SteamID"), DarkRP.Library.Font(8, 0, "Montserrat Bold"), pPos.x, pPos.y - 20, color_white, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER, 1, color_black)
-                if input.IsMouseDown(MOUSE_LEFT) and cooldownCopy < CurTime() then
-                  if localPlayer:HasAdminMode() then
-                    cooldownCopy = CurTime() + 1
-                    Prisel.Admin.OpenPlayerInfo(v)
-                  else
-                    cooldownCopy = CurTime() + 1
-                    local steamID = v:SteamID() ~= "NULL" and v:SteamID() or ("SteamID Non Valide (ID : "..v:UserID()..")")
-                    SetClipboardText(steamID)
-                    notification.AddLegacy(("SteamID de %s copié !"):format(v:Nick()), NOTIFY_GENERIC, 2)
-                    surface.PlaySound("buttons/button15.wav")
-                  end
-                end
+        if distanceBetween <= 100 then
+            draw.SimpleTextOutlined("Clique gauche pour " .. (localPlayer:HasAdminMode() and "ouvrir le panel joueur" or "copier le SteamID"), DarkRP.Library.Font(8, 0, "Montserrat Bold"), pPos.x, pPos.y - 20, color_white, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER, 1, color_black)
+            if input.IsMouseDown(MOUSE_LEFT) and cooldownCopy < CurTime() then
+              if localPlayer:HasAdminMode() then
+                cooldownCopy = CurTime() + 1
+                Prisel.Admin.OpenPlayerInfo(v)
+              else
+                cooldownCopy = CurTime() + 1
+                local steamID = v:SteamID() ~= "NULL" and v:SteamID() or ("SteamID Non Valide (ID : "..v:UserID()..")")
+                SetClipboardText(steamID)
+                notification.AddLegacy(("SteamID de %s copié !"):format(v:Nick()), NOTIFY_GENERIC, 2)
+                surface.PlaySound("buttons/button15.wav")
+              end
             end
         end
+      end
     end
   end)
 
