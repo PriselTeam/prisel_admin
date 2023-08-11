@@ -246,7 +246,7 @@ function PLAYER:MarkSanctionActive(iSanctionID)
     query:start()
 end
 
-function PLAYER:IsSanctionActive(iSanctionID)
+function PLAYER:IsSanctionActive(iSanctionID, cb)
     local sSteamID64 = self:SteamID64()
 
     if not db then
@@ -257,17 +257,13 @@ function PLAYER:IsSanctionActive(iSanctionID)
         SELECT active FROM player_sanctions WHERE steamid = '%s' AND id = %d
     ]]):format(sSteamID64, tonumber(iSanctionID))
 
-    local bActive = false
-
     local query = db:query(sSelectQuery)
 
     query.onSuccess = function(_, tData)
         if tData and tData[1] then
-            bActive = tData[1].active
+            cb(tobool(tData[1].active))
         end
     end
 
     query:start()
-
-    return bActive
 end

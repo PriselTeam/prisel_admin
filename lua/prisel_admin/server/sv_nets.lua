@@ -5,6 +5,7 @@ util.AddNetworkString("Prisel::ClearPlayerVehicles")
 util.AddNetworkString("Prisel::SellPlayerDoor")
 util.AddNetworkString("Prisel.AdminLocker.RequestPlayerSanctions")
 util.AddNetworkString("Prisel.AdminLocker.AddSanction")
+util.AddNetworkString("Prisel.AdminLocker.ActiveSanction")
 
 local playerStaffTimes = {}
 
@@ -210,15 +211,25 @@ end)
 net.Receive("Prisel.AdminLocker.ActiveSanction", function(_, ply)
 	playerCooldowns[ply:SteamID64()] = playerCooldowns[ply:SteamID64()] or 0
 	if playerCooldowns[ply:SteamID64()] > CurTime() then return end
-	playerCooldowns[ply:SteamID64()] = CurTime() + 1
+	playerCooldowns[ply:SteamID64()] = CurTime() + 0.3
 
 	if not ply:PIsStaff() then return end
 	if not ply:HasAdminMode() then return end
 	if not Prisel.Admin.Config.StaffHG[ply:GetUserGroup()] then return end
 
 	local pTarget = net.ReadEntity()
+
 	if not IsValid(pTarget) then return end
+
 	local iSanctionID = net.ReadUInt(32)
 
-	print(pTarget, iSanctionID)
+	pTarget:IsSanctionActive(iSanctionID, function(bIsActive)
+		if bIsActive then
+			pTarget:MarkSanctionInactive(iSanctionID)
+			DarkRP.notify(ply, 0, 4, "Sanction désactivée.")
+		else
+			pTarget:MarkSanctionActive(iSanctionID)
+			DarkRP.notify(ply, 0, 4, "Sanction activée.")
+		end
+	end)
 end)

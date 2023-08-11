@@ -795,7 +795,10 @@ function Prisel.Admin:CallbackRequestSanctions(tSanctions)
       vActiveCheckBox:SetChecked(v.bIsActive)
 
       function vActiveCheckBox:OnChange(isActive)
-        print(isActive)
+        net.Start("Prisel.AdminLocker.ActiveSanction")
+          net.WriteEntity(pSelectedPlayer)
+          net.WriteUInt(v.iId, 32)
+        net.SendToServer()
       end
     end
 
