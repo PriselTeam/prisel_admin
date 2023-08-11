@@ -194,7 +194,7 @@ function Prisel.Admin.OpenPlayerInfo(player)
   iconLayoutActionsRisk:SetPos(infoPlayer:GetWide() * 0.2, infoPlayer:GetTall() * 0.53)
   iconLayoutActionsRisk:SetSpaceY(5)
   iconLayoutActionsRisk:SetSpaceX(5)
-
+  
   CreateButton(iconLayoutActionsRisk, "Jail", DarkRP.Config.Colors.Red, function()
     local time = Derma_StringRequest("Temps du jail", "Temps du jail en minutes", "", function(text)
       if not tonumber(text) then return end
@@ -981,6 +981,9 @@ function Prisel.Admin:OpenLockerPanel()
   end  
 end
 
-concommand.Add("cas", function()
-  Prisel.Admin:OpenLockerPanel()
+hook.Add("OnPlayerChat", "Prisel.Admin:OpenLockerPanel", function(pPlayer, sText)
+  if pPlayer == LocalPlayer() and sText:lower() == "!casier" then
+    Prisel.Admin:OpenLockerPanel()
+    return true
+  end
 end)
