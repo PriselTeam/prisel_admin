@@ -634,13 +634,42 @@ hook.Add( "PlayerNoClip", "PriselV3:AdminMode:AntiNoClip", function(ply)
   return ply:HasAdminMode()
 end)
 
-function Prisel.Admin:RequestPlayerSanctions(pTarget)
+function Prisel.Admin:RequestPlayerSanctions(pTarget, fcCallback)
   net.Start("Prisel.AdminLocker.RequestPlayerSanctions")
     net.WriteEntity(pTarget)
   net.SendToServer()
+
+  net.Receive("Prisel.AdminLocker.RequestPlayerSanctions", function()
+    local pTarget = net.ReadEntity()
+    if not IsValid(pTarget) then return end
+  
+    local iSanctions = net.ReadUInt(8)
+    local tSanctions = {}
+    for i = 1, iSanctions do
+      local iId = net.ReadUInt(32)
+      local sReason = net.ReadString()
+      local sAdminSteamID64 = net.ReadString()
+      local iSanctionType = net.ReadUInt(8)
+      local bIsActive = net.ReadBool()
+      local iDate = net.ReadUInt(32)
+      tSanctions[i] = {
+        iId = iId,
+        sReason = sReason,
+        sAdminSteamID64 = sAdminSteamID64,
+        iSanctionType = iSanctionType,
+        bIsActive = bIsActive,
+        iDate = iDate
+      }
+    end
+  
+    if isfunction(fcCallback) then
+      PrintTable(tSanctions)
+      fcCallback(tSanctions)
+    end
+  end)
 end
 
-local vCasier, vPanel, pSelectedPlayer = nil, nil, nil
+local vCasier, vPanel, vPanelSanction, pSelectedPlayer = nil, nil, nil, nil
 
 function Prisel.Admin:ModalAddWarn(pTarget, callback)
 
@@ -695,6 +724,86 @@ function Prisel.Admin:ModalAddWarn(pTarget, callback)
 
 end
 
+function Prisel.Admin:CallbackRequestSanctions(tSanctions)
+  
+  if not IsValid(vCasier) then return end
+  if not IsValid(vPanelSanction) then return end
+
+  local tPlayerSanctions = tSanctions
+  local tSanctionsActives = {}
+
+  for _, v in ipairs(tPlayerSanctions) do
+    if v.bIsActive then
+      table.insert(tSanctionsActives, v)
+    end
+  end
+  
+  local vLabelCountSanction = vgui.Create("DLabel", vPanel)
+  vLabelCountSanction:Dock(BOTTOM)
+  vLabelCountSanction:DockMargin(DarkRP.ScrW * 0.01, DarkRP.ScrH * 0.01, DarkRP.ScrW * 0.01, DarkRP.ScrH * 0.01)
+  vLabelCountSanction:SetFont(DarkRP.Library.Font(10, 0, "Montserrat Bold"))
+  vLabelCountSanction:SetText("Nombre de sanctions actives : " .. #tSanctionsActives)
+  vLabelCountSanction:SetTextColor(color_white)
+  vLabelCountSanction:SetContentAlignment(5)
+
+  for k, v in ipairs(tPlayerSanctions) do
+
+    local vPanelPlayerSanction = vgui.Create("DPanel", vPanelSanction)
+    vPanelPlayerSanction:Dock(TOP)
+    vPanelPlayerSanction:DockMargin(vPanelSanction:GetWide() * 0.02, vPanelSanction:GetTall() * 0.02, vPanelSanction:GetWide() * 0.02, vPanelSanction:GetTall() * 0.02)
+    vPanelPlayerSanction:SetTall(DarkRP.ScrH * 0.0995)
+    vPanelPlayerSanction:CenterHorizontal()
+    vPanelPlayerSanction:SetAlpha(0)
+    vPanelPlayerSanction:AlphaTo(255, 0.5)
+
+    function vPanelPlayerSanction:Paint(w, h)
+      draw.RoundedBox(DarkRP.Config.RoundedBoxValue, 0, 0, w, h, DarkRP.Library.ColorNuance(DarkRP.Config.Colors["Secondary"], 15))
+    end
+
+    local vLabelType = vgui.Create("DLabel", vPanelPlayerSanction)
+    vLabelType:Dock(TOP)
+    vLabelType:DockMargin(DarkRP.ScrW * 0.01, DarkRP.ScrH * 0.01, DarkRP.ScrW * 0.01, 0)
+    vLabelType:SetFont(DarkRP.Library.Font(10, 0, "Montserrat Bold"))
+    vLabelType:SetText(("##%i - %s"):format(v.iId, Prisel.Admin.Config.SanctionsTypes[v.iSanctionType]) )
+    vLabelType:SetTextColor(color_white)
+    vLabelType:SetContentAlignment(5)
+    vLabelType:CenterHorizontal()
+    vLabelType:SizeToContentsX()
+
+    local vLabelReason = vgui.Create("DLabel", vPanelPlayerSanction)
+    vLabelReason:Dock(TOP)
+    vLabelReason:DockMargin(DarkRP.ScrW * 0.01, DarkRP.ScrH * 0.01, DarkRP.ScrW * 0.01, 0)
+    vLabelReason:SetFont(DarkRP.Library.Font(8, 0, "Montserrat Bold"))
+    vLabelReason:SetText("Raison : " .. v.sReason)
+    vLabelReason:SetTextColor(color_white)
+    vLabelReason:SetContentAlignment(4)
+    vLabelReason:SizeToContentsY()
+
+    local vLabelDate = vgui.Create("DLabel", vPanelPlayerSanction)
+    vLabelDate:Dock(TOP)
+    vLabelDate:DockMargin(DarkRP.ScrW * 0.01, DarkRP.ScrH * 0.005, DarkRP.ScrW * 0.01, 0)
+    vLabelDate:SetFont(DarkRP.Library.Font(8, 0, "Montserrat Bold"))
+    vLabelDate:SetText("Date : " .. os.date("%d/%m/%Y", v.iDate))
+    vLabelDate:SetTextColor(color_white)
+    vLabelDate:SetContentAlignment(4)
+    vLabelDate:SizeToContentsY()
+
+    if Prisel.Admin.Config.StaffHG[LocalPlayer():GetUserGroup()] then
+      local vActiveCheckBox = vgui.Create("Prisel.CheckBox", vPanelPlayerSanction)
+      vActiveCheckBox:SetY(vPanelPlayerSanction:GetTall() * 0.1)
+      vActiveCheckBox:SetX(DarkRP.ScrW * 0.273)
+      vActiveCheckBox:SetChecked(v.bIsActive)
+
+      function vActiveCheckBox:OnChange(isActive)
+        print(isActive)
+      end
+    end
+
+  end
+
+end
+
+
 function Prisel.Admin:OpenLockerPlayer(pTarget, force)
   
   if not IsValid(pTarget) then return end
@@ -716,106 +825,61 @@ function Prisel.Admin:OpenLockerPlayer(pTarget, force)
 
   pSelectedPlayer = pTarget
 
-  Prisel.Admin:RequestPlayerSanctions(pTarget)
-
-  timer.Simple(0.02, function()
-      local vLabelPanelPlayer = vgui.Create("DLabel", vPanel)
-      vLabelPanelPlayer:Dock(TOP)
-      vLabelPanelPlayer:DockMargin(DarkRP.ScrW * 0.01, DarkRP.ScrH * 0.01, DarkRP.ScrW * 0.01, 0)
-      vLabelPanelPlayer:SetFont(DarkRP.Library.Font(15, 0, "Montserrat Bold"))
-      vLabelPanelPlayer:SetText("Casier des sanctions")
-      vLabelPanelPlayer:SetTextColor(color_white)
-      vLabelPanelPlayer:SetContentAlignment(5)
-      vLabelPanelPlayer:SizeToContentsY()
-
-      local vLabelPlayer = vgui.Create("DLabel", vPanel)
-      vLabelPlayer:Dock(TOP)
-      vLabelPlayer:DockMargin(DarkRP.ScrW * 0.01, DarkRP.ScrH * 0.01, DarkRP.ScrW * 0.01, 0)
-      vLabelPlayer:SetFont(DarkRP.Library.Font(10, 0, "Montserrat Bold"))
-      vLabelPlayer:SetText(pSelectedPlayer ~= nil and "Joueur sélectionné : " .. pSelectedPlayer:Nick() or "Veuillez sélectionner un joueur")
-      vLabelPlayer:SetTextColor(color_white)
-      vLabelPlayer:SetContentAlignment(5)
-      vLabelPlayer:SizeToContentsY()
-
-
-      function vLabelPlayer:Think()
-        self:SetText(pSelectedPlayer ~= nil and "Joueur sélectionné : " .. pSelectedPlayer:Nick() or "Veuillez sélectionner un joueur")
-        self:SizeToContentsY()
-      end
-
-      local vAddSanctionPlayer = vgui.Create("Prisel.Button", vPanel)
-      vAddSanctionPlayer:Dock(BOTTOM)
-      vAddSanctionPlayer:DockMargin(DarkRP.ScrW * 0.01, DarkRP.ScrH * 0.01, DarkRP.ScrW * 0.01, DarkRP.ScrH * 0.01)
-      vAddSanctionPlayer:SetText("Ajouter une sanction")
-      vAddSanctionPlayer:SetBackgroundColor(DarkRP.Config.Colors["Green"])
-
-      function vAddSanctionPlayer:DoClick()
-        Prisel.Admin:ModalAddWarn(pTarget, function(iType, sReason)
-          net.Start("Prisel.AdminLocker.AddSanction")
-            net.WriteEntity(pTarget)
-            net.WriteUInt(iType, 8)
-            net.WriteString(sReason)
-          net.SendToServer()
-        end)
-      end
-
-      local tPlayerSanctions = Prisel.Admin.Sanctions[pSelectedPlayer:SteamID64()] or {}
-
-      local vLabelCountSanction = vgui.Create("DLabel", vPanel)
-      vLabelCountSanction:Dock(BOTTOM)
-      vLabelCountSanction:DockMargin(DarkRP.ScrW * 0.01, DarkRP.ScrH * 0.01, DarkRP.ScrW * 0.01, DarkRP.ScrH * 0.01)
-      vLabelCountSanction:SetFont(DarkRP.Library.Font(10, 0, "Montserrat Bold"))
-      vLabelCountSanction:SetText("Nombre de sanctions actives : " .. #tPlayerSanctions)
-      vLabelCountSanction:SetTextColor(color_white)
-      vLabelCountSanction:SetContentAlignment(5)
-
-      local vPanelSanction = vgui.Create("DScrollPanel", vPanel)
-      vPanelSanction:Dock(FILL)
-      vPanelSanction:DockMargin(DarkRP.ScrW * 0.01, DarkRP.ScrH * 0.01, DarkRP.ScrW * 0.01, DarkRP.ScrH * 0.01)
-      vPanelSanction:GetVBar():SetWide(0)
-      -- vPanelSanction:NoClipping(true)
-
-      function vPanelSanction:Paint(w, h)
-        local x, y = self:LocalToScreen(0, 0)
-        BSHADOWS.BeginShadow()
-          draw.RoundedBox(DarkRP.Config.RoundedBoxValue, x, y, w, h, DarkRP.Library.ColorNuance(DarkRP.Config.Colors["Main"], 15))
-        BSHADOWS.EndShadow(1, 1, 1, 255, 0, 0)
-      end
-
-      for k, v in ipairs(tPlayerSanctions) do
-        local vPanelSanction = vgui.Create("DPanel", vPanelSanction)
-        vPanelSanction:Dock(TOP)
-        vPanelSanction:DockMargin(vPanelSanction:GetWide() * 0.3, vPanelSanction:GetTall() * 0.5, vPanelSanction:GetWide() * 0.3, 0)
-        vPanelSanction:SetTall(DarkRP.ScrH * 0.0995)
-        vPanelSanction:CenterHorizontal()
-
-        function vPanelSanction:Paint(w, h)
-          local x, y = self:LocalToScreen(0, 0)
-          BSHADOWS.BeginShadow()
-            draw.RoundedBox(DarkRP.Config.RoundedBoxValue, x, y, w, h, DarkRP.Library.ColorNuance(DarkRP.Config.Colors["Secondary"], 15))
-          BSHADOWS.EndShadow(1, 1, 1, 255, 0, 0)
-        end
-
-        local vLabelType = vgui.Create("DLabel", vPanelSanction)
-        vLabelType:Dock(TOP)
-        vLabelType:DockMargin(DarkRP.ScrW * 0.01, DarkRP.ScrH * 0.01, DarkRP.ScrW * 0.01, 0)
-        vLabelType:SetFont(DarkRP.Library.Font(10, 0, "Montserrat Bold"))
-        vLabelType:SetText(("##%i - %s"):format(v.iId, Prisel.Admin.Config.SanctionsTypes[v.iSanctionType]) )
-        vLabelType:SetTextColor(color_white)
-        vLabelType:SetContentAlignment(5)
-        vLabelType:CenterHorizontal()
-        vLabelType:SizeToContentsX()
-
-        local vLabelReason = vgui.Create("DLabel", vPanelSanction)
-        vLabelReason:Dock(TOP)
-        vLabelReason:DockMargin(DarkRP.ScrW * 0.01, DarkRP.ScrH * 0.01, DarkRP.ScrW * 0.01, 0)
-        vLabelReason:SetFont(DarkRP.Library.Font(8, 0, "Montserrat Bold"))
-        vLabelReason:SetText("Raison : " .. v.sReason)
-        vLabelReason:SetTextColor(color_white)
-        vLabelReason:SetContentAlignment(4)
-        vLabelReason:SizeToContentsY()
-      end
+  Prisel.Admin:RequestPlayerSanctions(pTarget, function(tSanctions)
+    Prisel.Admin:CallbackRequestSanctions(tSanctions)
   end)
+
+  local vLabelPanelPlayer = vgui.Create("DLabel", vPanel)
+  vLabelPanelPlayer:Dock(TOP)
+  vLabelPanelPlayer:DockMargin(DarkRP.ScrW * 0.01, DarkRP.ScrH * 0.01, DarkRP.ScrW * 0.01, 0)
+  vLabelPanelPlayer:SetFont(DarkRP.Library.Font(15, 0, "Montserrat Bold"))
+  vLabelPanelPlayer:SetText("Casier des sanctions")
+  vLabelPanelPlayer:SetTextColor(color_white)
+  vLabelPanelPlayer:SetContentAlignment(5)
+  vLabelPanelPlayer:SizeToContentsY()
+
+  local vLabelPlayer = vgui.Create("DLabel", vPanel)
+  vLabelPlayer:Dock(TOP)
+  vLabelPlayer:DockMargin(DarkRP.ScrW * 0.01, DarkRP.ScrH * 0.01, DarkRP.ScrW * 0.01, 0)
+  vLabelPlayer:SetFont(DarkRP.Library.Font(10, 0, "Montserrat Bold"))
+  vLabelPlayer:SetText(pSelectedPlayer ~= nil and "Joueur sélectionné : " .. pSelectedPlayer:Nick() or "Veuillez sélectionner un joueur")
+  vLabelPlayer:SetTextColor(color_white)
+  vLabelPlayer:SetContentAlignment(5)
+  vLabelPlayer:SizeToContentsY()
+
+
+  function vLabelPlayer:Think()
+    self:SetText(pSelectedPlayer ~= nil and "Joueur sélectionné : " .. pSelectedPlayer:Nick() or "Veuillez sélectionner un joueur")
+    self:SizeToContentsY()
+  end
+
+  local vAddSanctionPlayer = vgui.Create("Prisel.Button", vPanel)
+  vAddSanctionPlayer:Dock(BOTTOM)
+  vAddSanctionPlayer:DockMargin(DarkRP.ScrW * 0.01, DarkRP.ScrH * 0.01, DarkRP.ScrW * 0.01, DarkRP.ScrH * 0.01)
+  vAddSanctionPlayer:SetText("Ajouter une sanction")
+  vAddSanctionPlayer:SetBackgroundColor(DarkRP.Config.Colors["Green"])
+
+  function vAddSanctionPlayer:DoClick()
+    Prisel.Admin:ModalAddWarn(pTarget, function(iType, sReason)
+      net.Start("Prisel.AdminLocker.AddSanction")
+        net.WriteEntity(pTarget)
+        net.WriteUInt(iType, 8)
+        net.WriteString(sReason)
+      net.SendToServer()
+    end)
+  end
+
+  vPanelSanction = vgui.Create("DScrollPanel", vPanel)
+  vPanelSanction:Dock(FILL)
+  vPanelSanction:DockMargin(DarkRP.ScrW * 0.01, DarkRP.ScrH * 0.01, DarkRP.ScrW * 0.01, DarkRP.ScrH * 0.01)
+  vPanelSanction:GetVBar():SetWide(0)
+
+  function vPanelSanction:Paint(w, h)
+    local x, y = self:LocalToScreen(0, 0)
+    BSHADOWS.BeginShadow()
+      draw.RoundedBox(DarkRP.Config.RoundedBoxValue, x, y, w, h, DarkRP.Library.ColorNuance(DarkRP.Config.Colors["Main"], 15))
+    BSHADOWS.EndShadow(1, 1, 1, 255, 0, 0)
+  end
 end
 
 function Prisel.Admin:OpenLockerPanel()
@@ -823,7 +887,7 @@ function Prisel.Admin:OpenLockerPanel()
   vCasier:SetSize(DarkRP.ScrW * 0.5, DarkRP.ScrH * 0.7)
   vCasier:Center()
   vCasier:SetTitle("Casier Administratif")
-  vCasier:SetDescription("Gérer les sanctions des joueurs dans ce menu")
+  vCasier:SetDescription("Gérez les sanctions des joueurs dans ce menu")
   vCasier:MakePopup()
 
   local vLeftPlayerList = vgui.Create("DPanel", vCasier)

@@ -10,7 +10,7 @@ function db:onConnected()
             reason TEXT,
             admin_id VARCHAR(255),
             sanction_type INT,
-            timestamp TIMESTAMP,
+            timestamp int(11),
             active BOOLEAN DEFAULT TRUE
         )
     ]]
@@ -38,8 +38,8 @@ function PLAYER:AddSanction(sReason, sAdminID, iSanctionType)
 
     local sInsertQuery = ([[
         INSERT INTO player_sanctions (steamid, reason, admin_id, sanction_type, timestamp)
-        VALUES ('%s', '%s', '%s', %d, NOW())
-    ]]):format(self:SteamID64(), db:escape(sReason), db:escape(sAdminID), tonumber(iSanctionType))
+        VALUES ('%s', '%s', '%s', %d, %i)
+    ]]):format(self:SteamID64(), db:escape(sReason), db:escape(sAdminID), tonumber(iSanctionType), os.time())
 
     local query = db:query(sInsertQuery)
 
@@ -54,6 +54,7 @@ function PLAYER:AddSanction(sReason, sAdminID, iSanctionType)
     query.onError = function(_, err)
         if IsValid(pAdmin) then
             DarkRP.notify(pAdmin, 1, 4, "Une erreur est survenue lors de l'ajout de la sanction à " .. self:Nick() .. ".")
+            DarkRP.notify(pAdmin, 1, 4, err)
         end
     end
 

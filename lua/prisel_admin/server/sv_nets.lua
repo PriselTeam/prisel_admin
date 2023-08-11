@@ -8,7 +8,12 @@ util.AddNetworkString("Prisel.AdminLocker.AddSanction")
 
 local playerStaffTimes = {}
 
+local playerCooldowns = {}
+
 net.Receive("PriselV3::PlayerAdmin", function(_, ply)
+	playerCooldowns[ply:SteamID64()] = playerCooldowns[ply:SteamID64()] or 0
+	if playerCooldowns[ply:SteamID64()] > CurTime() then return end
+	playerCooldowns[ply:SteamID64()] = CurTime() + 1
 
 	local action = net.ReadUInt(2)
 
@@ -80,6 +85,9 @@ hook.Add("PlayerDisconnected", "PriselV3::PlayerAdmin", function(ply)
 end)
 
 net.Receive("Prisel::ClearPropsPlayer", function(len, ply)
+	playerCooldowns[ply:SteamID64()] = playerCooldowns[ply:SteamID64()] or 0
+	if playerCooldowns[ply:SteamID64()] > CurTime() then return end
+	playerCooldowns[ply:SteamID64()] = CurTime() + 1
   if not ply:HasAdminMode() then return end
 
     local targetName = net.ReadString()
@@ -102,6 +110,9 @@ net.Receive("Prisel::ClearPropsPlayer", function(len, ply)
 end)
 
 net.Receive("Prisel::ClearPlayerVehicles", function(len, ply)
+	playerCooldowns[ply:SteamID64()] = playerCooldowns[ply:SteamID64()] or 0
+	if playerCooldowns[ply:SteamID64()] > CurTime() then return end
+	playerCooldowns[ply:SteamID64()] = CurTime() + 1
     if not ply:HasAdminMode() then return end
 
     local targetName = net.ReadString()
@@ -123,6 +134,9 @@ net.Receive("Prisel::ClearPlayerVehicles", function(len, ply)
 end)
 
 net.Receive("Prisel::SellPlayerDoor", function(len, ply)
+	playerCooldowns[ply:SteamID64()] = playerCooldowns[ply:SteamID64()] or 0
+	if playerCooldowns[ply:SteamID64()] > CurTime() then return end
+	playerCooldowns[ply:SteamID64()] = CurTime() + 1
   if not ply:HasAdminMode() then return end
 
   local targetName = net.ReadString()
@@ -150,6 +164,9 @@ net.Receive("Prisel::SellPlayerDoor", function(len, ply)
 end)
 
 net.Receive("Prisel.AdminLocker.RequestPlayerSanctions", function(_, ply)
+	playerCooldowns[ply:SteamID64()] = playerCooldowns[ply:SteamID64()] or 0
+	if playerCooldowns[ply:SteamID64()] > CurTime() then return end
+	playerCooldowns[ply:SteamID64()] = CurTime() + 0.3
 	if not ply:PIsStaff() then return end
 	if not ply:HasAdminMode() then return end
 
@@ -162,11 +179,12 @@ net.Receive("Prisel.AdminLocker.RequestPlayerSanctions", function(_, ply)
 				net.WriteEntity(pTarget)
 				net.WriteUInt(iCount, 8)
 				for _, tSanction in ipairs(tSanctions) do
-					PrintTable(tSanction)
 					net.WriteUInt(tSanction.id, 32)
 					net.WriteString(tSanction.reason)
 					net.WriteString(tSanction.admin_id)
 					net.WriteUInt(tSanction.sanction_type, 8)
+					net.WriteBool(tSanction.active)
+					net.WriteUInt(tSanction.timestamp, 32)
 				end
 			net.Send(ply)
 		end
@@ -174,6 +192,10 @@ net.Receive("Prisel.AdminLocker.RequestPlayerSanctions", function(_, ply)
 end)
 
 net.Receive("Prisel.AdminLocker.AddSanction", function(_, ply)
+	playerCooldowns[ply:SteamID64()] = playerCooldowns[ply:SteamID64()] or 0
+	if playerCooldowns[ply:SteamID64()] > CurTime() then return end
+	playerCooldowns[ply:SteamID64()] = CurTime() + 1
+
 	if not ply:PIsStaff() then return end
 	if not ply:HasAdminMode() then return end
 
@@ -183,4 +205,20 @@ net.Receive("Prisel.AdminLocker.AddSanction", function(_, ply)
 	local sReason = net.ReadString()
 
 	pTarget:AddSanction(sReason, ply:SteamID64(), iSanctionType)
+end)
+
+net.Receive("Prisel.AdminLocker.ActiveSanction", function(_, ply)
+	playerCooldowns[ply:SteamID64()] = playerCooldowns[ply:SteamID64()] or 0
+	if playerCooldowns[ply:SteamID64()] > CurTime() then return end
+	playerCooldowns[ply:SteamID64()] = CurTime() + 1
+
+	if not ply:PIsStaff() then return end
+	if not ply:HasAdminMode() then return end
+	if not Prisel.Admin.Config.StaffHG[ply:GetUserGroup()] then return end
+
+	local pTarget = net.ReadEntity()
+	if not IsValid(pTarget) then return end
+	local iSanctionID = net.ReadUInt(32)
+
+	print(pTarget, iSanctionID)
 end)

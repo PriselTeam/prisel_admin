@@ -7,5 +7,11 @@ Prisel.Admin.Config.SanctionsTypes = {
     [1] = "Avertissement Oral",
     [2] = "Avertissement Écrit",
     [3] = "Avertissement Métier",
-    [4] = "Avertissement Whitelist"
+    [4] = "Avertissement Whitelist",
+    [5] = "Bannissement"
+}
+
+Prisel.Admin.Config.StaffHG = {
+    ["superadmin"] = true,
+    ["super-admin"] = true
 }
