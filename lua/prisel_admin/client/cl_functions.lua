@@ -987,6 +987,7 @@ end
 
 hook.Add("OnPlayerChat", "Prisel.Admin:OpenLockerPanel", function(pPlayer, sText)
   if pPlayer == LocalPlayer() and sText:lower() == "!casier" then
+    if not pPlayer:HasAdminMode() then return end
     Prisel.Admin:OpenLockerPanel()
     return true
   end
